@@ -24,7 +24,7 @@ Here's a brief overview of the structure of this repository:
 
 - `/NearestNeighbors`: Contains my findings, notes, and code related to the Nearest Neighbors Algorithm.
 
-- `/BasicNeuralNetwork`: This directory houses my ongoing project on implementing a basic Neural Network using NumPy. You'll find code, documentation, and any related resources here.
+- `/NeuralNetwork`: This directory houses my ongoing project on implementing a basic Neural Network using NumPy. You'll find code, documentation, and any related resources here.
 
 ## Future Plans
 
