@@ -226,8 +226,10 @@ class NeuralNetwork:
         :param real: Actual value(s) of function
         """
 
-           # Compute the error
+        # Compute the error
         error = MSE(predicted, real)
+        gradient = 2 * error
+
         # Backpropagate the error through the layers
         for i in range(len(self.Network) - 1, 0, -1):
             current_layer = self.Network[i]
@@ -235,11 +237,10 @@ class NeuralNetwork:
             # Compute the gradients for weights and biases
             if current_layer.activationD is not None:
                 activation_derivative = current_layer.activationD(current_layer.values)
-
-                gradient = 2 * error * activation_derivative
+                gradient = gradient * activation_derivative
 
             else:
-                gradient = 2 * error
+                gradient = gradient
 
             # Compute weight and bias gradients
             weight_gradient = np.outer(gradient, prev_layer.values).T
