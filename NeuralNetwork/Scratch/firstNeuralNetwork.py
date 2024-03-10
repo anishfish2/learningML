@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from loss_functions import *
 
 class Layer:
-     def __init__(self, biases, weights, activation, activationD, numNodes, index):
+     def __init__(self, matrix, activation, activationD, numNodes, index):
         """
         Constructor for Neural Network Layer
 
@@ -18,8 +18,7 @@ class Layer:
         :param value: value of ouputs of this layer
         """
         
-        self.biases = biases
-        self.weights = weights
+        self.matrix = matrix
         self.activation = activation
         self.activationD = activationD
         self.numNodes = numNodes
@@ -36,8 +35,8 @@ class NeuralNetwork:
         :param lenInput: Number of Input Layer Neurons
         """
 
-        #Create hidden layer with random biases, random weights, given size and activation function, and assign index
-        inputLayer = Layer(None, None, None, None, lenInput, 0)
+        #Create hidden layer with random biases, random weights, given size (plus bias unit) and activation function, and assign index
+        inputLayer = Layer(None, None, None, lenInput + 1, 0)
 
         #Create the Network
         self.Network = [inputLayer]
@@ -75,16 +74,17 @@ class NeuralNetwork:
         :param activation: Function of Node Activation function
         """
 
-        #Initialize random biases with near zero values
-        biases = np.random.uniform(-0.01, 0.01, size=numNodes)
 
-        #Initialize weights using He initialization method
-        weights = np.zeros((numNodes, self.Network[-1].numNodes))
+
+        #Initialize weights and biases using He initialization method; Biases set with zero values
+
+        matrix = np.zeros((numNodes, self.Network[-1].numNodes))
+
         for node in range(numNodes):
-            weights[node, :] = he_initializer(self.Network[-1].numNodes)
+            matrix[node, :-1] = he_initializer(self.Network[-1].numNodes - 1)
 
         #Create hidden layer with random biases, random weights, given size and activation function, and assign index
-        hiddenLayer = Layer(biases, weights, activation, activationD, numNodes, len(self.Network))
+        hiddenLayer = Layer(matrix, activation, activationD, numNodes, len(self.Network))
        
         #Add to network
         self.Network.append(hiddenLayer)
@@ -99,16 +99,14 @@ class NeuralNetwork:
         :param activation: Function of Node Activation function
         """
 
-        #Initialize random biases with near zero values
-        biases = np.random.uniform(-0.01, 0.01, size=lenOutput)
+        #Initialize weights and biases using He initialization method; Biases set with zero values
+        matrix = np.zeros((lenOutput, self.Network[-1].numNodes))
 
-        #Initialize weights using He initialization method
-        weights = np.zeros((lenOutput, self.Network[-1].numNodes))
         for node in range(lenOutput):
-            weights[node, :] = he_initializer(self.Network[-1].numNodes)
+            matrix[node, :-1] = he_initializer(self.Network[-1].numNodes - 1)
 
         #Create hidden layer with random biases, random weights, given size and activation function, and assign index
-        outputLayer = Layer(biases, weights, activation, activationD, lenOutput, len(self.Network))
+        outputLayer = Layer(matrix, activation, activationD, lenOutput, len(self.Network))
        
         #Add to network
         self.Network.append(outputLayer)
@@ -121,20 +119,15 @@ class NeuralNetwork:
 
         :param inputs: Input values to Input Layer
         """
-        self.Network[0].values = np.array([self.input_values])
-        print(f' Input values: {self.Network[0].values}')
+        self.Network[0].values = np.append(np.array([self.input_values]), 1)
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
-            print(f'Layer weight: {layer.weights}')
-            print(f'Prev Layer values: {prev_layer.values}')
-            layer.values = np.dot(layer.weights, prev_layer.values) + layer.biases
+            layer.values = layer.matrix @ prev_layer.values
             if layer.activation:
                 layer.values = layer.activation(layer.values)
             
         #Return the output layer values
-                
-        print(f'Output Layer: {self.Network[-1].values}')
         return self.Network[-1].values
 
     def backProp(self, predicted, real):
@@ -147,13 +140,14 @@ class NeuralNetwork:
         :param real: Actual value(s) of function
         """
 
-           # Compute the error
+        # Compute the error
         error = MSE(predicted, real)
+
         # Backpropagate the error through the layers
         for i in range(len(self.Network) - 1, 0, -1):
             current_layer = self.Network[i]
             prev_layer = self.Network[i - 1]
-            
+
             # Compute the gradients for weights and biases
             if current_layer.activationD is not None:
                 activation_derivative = current_layer.activationD(current_layer.values)
@@ -180,22 +174,25 @@ def testFunction(x):
 def main():
 
     num_vals = 1
-
+    num_epochs = 100
     #Define the input and output values
     x = [np.array(i) for i in np.linspace(-5, 5, num=num_vals)]
+
+    #Add bias to input
     y = testFunction(x)
 
     NN = NeuralNetwork(1, 0.1)
     NN.addHidden(3, ReLU, ReLUD)
     NN.addOutput(1, ReLU, ReLUD)
 
-    for i in range(num_vals):
-        NN.setInput(x[i])
-        NN.setInputTest(y[i])
+    for epoch in range(num_epochs):
+        for i in range(num_vals):
+            NN.setInput(x[i])
+            NN.setInputTest(y[i])
 
-        prediction = NN.feedForward()[0]
-        true_val = y[i]
-        NN.backProp(prediction, true_val)
+            prediction = NN.feedForward()[0]
+            true_val = y[i]
+            NN.backProp(prediction, true_val)
 
     x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
     y_test = testFunction(x_test)
