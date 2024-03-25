@@ -146,29 +146,37 @@ class NeuralNetwork:
         # Backpropagate the error through the layers
         for i in range(len(self.Network) - 1, 0, -1):
             current_layer = self.Network[i]
-            prev_layer = self.Network[i - 1]
 
             # Compute the gradients for weights and biases
-            if current_layer.activationD is not None:
-                activation_derivative = current_layer.activationD(current_layer.values)
 
-                gradient = 2 * error * activation_derivative
+            if i == len(self.Network) - 1:
+                if current_layer.activationD is not None:
+                    activation_derivative = current_layer.activationD(current_layer.values)
 
-            else:
-                gradient = 2 * error
+                    gradient = -2 * error * activation_derivative
 
-            # Compute weight and bias gradients
-            weight_gradient = np.outer(gradient, prev_layer.values).T
-            bias_gradient = gradient
+                else:
+                    gradient = -2 * error
+            elif i != 0:
+                # Compute weight and bias gradients
+                weight_gradient = np.outer(gradient, prev_layer.values).T
+                bias_gradient = gradient
 
-            # Update weights and biases using gradients and learning rate
+                # Update weights and biases using gradients and learning rate
 
-            current_layer.weights -= self.learningRate * weight_gradient
-            current_layer.biases -= self.learningRate * bias_gradient
-            if i > 1:
-                error = np.dot(current_layer.weights, gradient)[0]
-            
+                current_layer.weights -= self.learningRate * weight_gradient
+                current_layer.biases -= self.learningRate * bias_gradient
+                if i > 1:
+                    error = np.dot(current_layer.weights, gradient)[0]
+                
 def testFunction(x):
+    """
+        Define a function to model in main function
+
+        This function is used to model the function that the neural network will try to learn
+
+        :param value: input value to function
+    """
     return np.sin(x)
 
 def main():
