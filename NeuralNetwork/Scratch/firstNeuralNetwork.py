@@ -143,8 +143,13 @@ class NeuralNetwork:
         # Compute the error
         error = MSE(predicted, real)
 
+        gradient_matrix = np.ones(self.Network[-1].matrix.shape) * -2 * error
+        
+        if self.Network[-1].activationD is not None:
+            gradient_matrix *= self.Network[-1].activationD(self.Network[-1].values)
+
         # Backpropagate the error through the layers
-        for i in range(len(self.Network) - 1, 0, -1):
+        for i in range(len(self.Network) - 2, 0, -1):
             current_layer = self.Network[i]
             prev_layer = self.Network[i - 1]
 
@@ -191,6 +196,7 @@ def main():
             NN.setInputTest(y[i])
 
             prediction = NN.feedForward()[0]
+            print(prediction)
             true_val = y[i]
             NN.backProp(prediction, true_val)
 
