@@ -79,9 +79,9 @@ def MSE(predicted, actual):
     """
         Standard implementation of Mean Squared Error
 
-        This function calculates the Mean squared of actual vs. predicted values
+        This function calculates the Mean squared error of actual vs. predicted values. It includes a .5 factor to simplify the derivative
         
         :param predicted: Value(s) output by forward pass of model
         :param real: Actual value(s) of function
     """
-    return np.mean((predicted - actual) ** 2)
+    return .5 * np.mean((predicted - actual) ** 2)
