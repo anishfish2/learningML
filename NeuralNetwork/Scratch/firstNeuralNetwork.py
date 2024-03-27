@@ -144,14 +144,14 @@ class NeuralNetwork:
         error = MSE(predicted, real)
 
         gradient_matrix = np.ones(self.Network[-1].matrix.shape) * -2 * error
-        
+
         if self.Network[-1].activationD is not None:
             gradient_matrix *= self.Network[-1].activationD(self.Network[-1].values)
 
         # Backpropagate the error through the layers
         for i in range(len(self.Network) - 2, 0, -1):
             current_layer = self.Network[i]
-
+            prev_layer = self.Network[i - 1]
             # Compute the gradients for weights and biases
 
             if i == len(self.Network) - 1:
