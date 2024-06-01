@@ -9,7 +9,6 @@ class Layer:
 
         This function initializes a Layer with a matrix of biases and weights to represent nodes
 
-        :param biases: values of node biases matrix
         :param weights: values of node weight matrix
         :param activation: function of node activation function
         :param activationD: derivative of node activation function
