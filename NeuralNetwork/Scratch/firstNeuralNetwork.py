@@ -32,9 +32,10 @@ class NeuralNetwork:
         This function initializes the neural network with an input layer.
 
         :param lenInput: Number of Input Layer Neurons
+        :param learningRate: Learning Rate of Neural Network
         """
 
-        #Create hidden layer with random biases, random weights, given size (plus bias unit) and activation function, and assign index
+        #Create input layer with no biases, no weights, given size (plus bias unit) and activation function, and assign index
         inputLayer = Layer(None, None, None, lenInput + 1, 0)
 
         #Create the Network
@@ -71,9 +72,8 @@ class NeuralNetwork:
 
         :param numNodes: Number of Hidden Layer Neurons
         :param activation: Function of Node Activation function
+        :param activationD: Derivative of Node Activation function
         """
-
-
 
         #Initialize weights and biases using He initialization method; Biases set with zero values
 
@@ -83,7 +83,7 @@ class NeuralNetwork:
             matrix[node, :-1] = he_initializer(self.Network[-1].numNodes - 1)
 
         #Create hidden layer with random biases, random weights, given size and activation function, and assign index
-        hiddenLayer = Layer(matrix, activation, activationD, numNodes, len(self.Network))
+        hiddenLayer = Layer(matrix, activation, activationD, numNodes + 1, len(self.Network))
        
         #Add to network
         self.Network.append(hiddenLayer)
@@ -96,6 +96,7 @@ class NeuralNetwork:
 
         :param lenOutput: Number of Output Neurons
         :param activation: Function of Node Activation function
+        :param activationD: Derivative of Node Activation function
         """
 
         #Initialize weights and biases using He initialization method; Biases set with zero values
@@ -122,12 +123,18 @@ class NeuralNetwork:
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
-            layer.values = layer.matrix @ prev_layer.values
+
+            print(prev_layer.values.shape, layer.matrix.shape)
+            layer.values = prev_layer.values @ layer.matrix.T 
             if layer.activation:
                 layer.values = layer.activation(layer.values)
             
+            # Add bias unit
+            if i != len(self.Network) - 1:
+                layer.values = np.append(layer.values, 1)
+
         #Return the output layer values
-        return self.Network[-1].values
+        return self.Network[-1].values, 1
 
     def backProp(self, predicted, real):
         """
@@ -186,11 +193,11 @@ def testFunction(x):
 def main():
 
     num_vals = 1
-    num_epochs = 100
-    #Define the input and output values
-    x = [np.array(i) for i in np.linspace(-5, 5, num=num_vals)]
+    num_epochs = 3
 
-    #Add bias to input
+    #Define the input and output values
+    x = [np.array([i]) for i in np.linspace(-5, 5, num=num_vals)]
+
     y = testFunction(x)
 
     NN = NeuralNetwork(1, 0.1)
@@ -198,23 +205,25 @@ def main():
     NN.addOutput(1, ReLU, ReLUD)
 
     for epoch in range(num_epochs):
+        
         for i in range(num_vals):
+            print("Epoch: ", epoch + 1, "Num Val:", i + 1)
             NN.setInput(x[i])
             NN.setInputTest(y[i])
 
             prediction = NN.feedForward()[0]
-            print(prediction)
             true_val = y[i]
-            NN.backProp(prediction, true_val)
+            print(prediction, true_val)
+            #NN.backProp(prediction, true_val)
 
-    x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
-    y_test = testFunction(x_test)
+    # x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
+    # y_test = testFunction(x_test)
     
-    test = []
-    for i in range(num_vals):
-        NN.setInput(x_test[i])
-        prediction = NN.feedForward()[0]
-        test.append(prediction)
+    # test = []
+    # for i in range(num_vals):
+    #     NN.setInput(x_test[i])
+    #     prediction = NN.feedForward()[0]
+    #     test.append(prediction)
 
     #plt.plot(x_test, y_test)
     #plt.plot(x_test, test)
