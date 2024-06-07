@@ -18,6 +18,8 @@ class Layer:
         """
         
         self.matrix = matrix
+        self.weight_gradient_matrix = None
+        self.value_gradient_matrix = None
         self.activation = activation
         self.activationD = activationD
         self.numNodes = numNodes
@@ -50,6 +52,7 @@ class NeuralNetwork:
 
         :param inputs: 1 input
         """
+
         self.input_values = input
     
     def setInputTest(self, input_test):
@@ -60,6 +63,7 @@ class NeuralNetwork:
 
         :param input_test: 1 set of input tests
         """
+
         self.input_values_test = input_test
 
     def addHidden(self, numNodes, activation, activationD):
@@ -123,9 +127,8 @@ class NeuralNetwork:
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
-
-            print(prev_layer.values.shape, layer.matrix.shape)
             layer.values = prev_layer.values @ layer.matrix.T 
+            
             if layer.activation:
                 layer.values = layer.activation(layer.values)
             
@@ -136,49 +139,27 @@ class NeuralNetwork:
         #Return the output layer values
         return self.Network[-1].values, 1
 
-    def backProp(self, predicted, real):
+    def backProp(self, actual, predicted, lossFunction, lossFunctionD):
         """
-        Run 1 backward pass through network
+        Run 1 backward pass through network 
 
         This function uses the chain rule and gradient descent to iteratively update the network biases and weights using the final error
 
         :param predicted: Value(s) output by forward pass of model
-        :param real: Actual value(s) of function
+        :param actual: Actual value(s) of function
         """
 
         # Compute the error
-        error = MSE(predicted, real)
+        error = lossFunction(actual, predicted)
 
-        gradient_matrix = np.ones(self.Network[-1].matrix.shape) * -2 * error
+        # Compute the gradient of the error with respect to the output layer
+        for index in range(len(self.Network) - 1, -1, -1):
+            layer = self.Network[index] 
 
-        if self.Network[-1].activationD is not None:
-            gradient_matrix *= self.Network[-1].activationD(self.Network[-1].values)
-
-        # Backpropagate the error through the layers
-        for i in range(len(self.Network) - 2, 0, -1):
-            current_layer = self.Network[i]
-            prev_layer = self.Network[i - 1]
-            # Compute the gradients for weights and biases
-
-            if i == len(self.Network) - 1:
-                if current_layer.activationD is not None:
-                    activation_derivative = current_layer.activationD(current_layer.values)
-
-                    gradient = -2 * error * activation_derivative
-
-                else:
-                    gradient = -2 * error
-            elif i != 0:
-                # Compute weight and bias gradients
-                weight_gradient = np.outer(gradient, prev_layer.values).T
-                bias_gradient = gradient
-
-                # Update weights and biases using gradients and learning rate
-
-                current_layer.weights -= self.learningRate * weight_gradient
-                current_layer.biases -= self.learningRate * bias_gradient
-                if i > 1:
-                    error = np.dot(current_layer.weights, gradient)[0]
+            if index == self.Network - 1:
+                self.Network[index].value_gradient_matrix = lossFunctionD
+                gradient = self.Network[-1].activationD(gradient)
+                gradient = self.Network 
                 
 def testFunction(x):
     """
@@ -214,7 +195,7 @@ def main():
             prediction = NN.feedForward()[0]
             true_val = y[i]
             print(prediction, true_val)
-            #NN.backProp(prediction, true_val)
+            NN.backProp(true_val, prediction, MSE, MSED)
 
     # x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
     # y_test = testFunction(x_test)

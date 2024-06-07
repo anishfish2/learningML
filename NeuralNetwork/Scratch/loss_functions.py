@@ -75,13 +75,25 @@ def tanhD(x):
     tanh_x = np.tanh(x)
     return 1 - tanh_x ** 2
 
-def MSE(predicted, actual):
+def MSE(actual, predicted):
     """
         Standard implementation of Mean Squared Error
 
-        This function calculates the Mean squared error of actual vs. predicted values. It includes a .5 factor to simplify the derivative
+        This function calculates the Mean squared error of actual vs. predicted values. It includes a -.5 factor to simplify the derivative
         
+        :param actual: Actual value(s) of function
         :param predicted: Value(s) output by forward pass of model
-        :param real: Actual value(s) of function
     """
-    return .5 * np.mean((predicted - actual) ** 2)
+    return  np.mean(-.5 * (actual - predicted) ** 2)
+
+def MSED(predicted, actual):
+    """
+        Derivative of Mean Squared Error
+
+        This function calculated the derivative of mean squared error of actual vs. predicted values.
+
+        :param predicted: Value(s) output by forward pass of model
+        :param actual: Actual value(s) of function
+    """
+
+    return actual - predicted
