@@ -17,7 +17,7 @@ class Layer:
         :param value: value of ouputs of this layer
         """
         
-        self.matrix = matrix
+        self.weight_matrix = matrix
         self.weight_gradient_matrix = None
         self.value_gradient_matrix = None
         self.activation = activation
@@ -127,7 +127,7 @@ class NeuralNetwork:
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
-            layer.values = prev_layer.values @ layer.matrix.T 
+            layer.values = prev_layer.values @ layer.weight_matrix.T 
             
             if layer.activation:
                 layer.values = layer.activation(layer.values)
@@ -139,7 +139,7 @@ class NeuralNetwork:
         #Return the output layer values
         return self.Network[-1].values, 1
 
-    def backProp(self, actual, predicted, lossFunction, lossFunctionD):
+    def backProp(self, actual, predicted, lossFunction, lossFunctionD, lr):
         """
         Run 1 backward pass through network 
 
@@ -150,17 +150,25 @@ class NeuralNetwork:
         """
 
         # Compute the error
-        error = lossFunction(actual, predicted)
+        loss = lossFunction(actual, predicted)
 
         # Compute the gradient of the error with respect to the output layer
-        for index in range(len(self.Network) - 1, -1, -1):
+        for index in range(len(self.Network) - 1, 0, -1):
             layer = self.Network[index] 
+            prev_layer = self.Network[index - 1]
 
-            if index == self.Network - 1:
-                self.Network[index].value_gradient_matrix = lossFunctionD
-                gradient = self.Network[-1].activationD(gradient)
-                gradient = self.Network 
-                
+            if index == len(self.Network) - 1:
+                layer.value_gradient_matrix = layer.activationD(layer.values) * lossFunctionD(actual, predicted)
+                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(prev_layer.values, (1, -1))
+                layer.weight_matrix = layer.weight_matrix - layer.value_gradient_matrix * lr 
+            else:
+                print("Calculating value gradient matrix", layer.weight_matrix.shape, self.Network[index + 1].value_gradient_matrix.shape, self.Network[index + 1].weight_matrix[:, :-1].shape, prev_layer.values.shape)
+                layer.value_gradient_matrix = layer.activationD(layer.values[:-1]) * (np.reshape(self.Network[index + 1].value_gradient_matrix, (-1,1)) @ self.Network[index + 1].weight_matrix[:, :-1]).squeeze()
+                print("Layer value gradient matrix", layer.value_gradient_matrix.shape, layer.weight_matrix.shape, prev_layer.values.shape)
+                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(prev_layer.values[:-1], (1, -1))
+                print(layer.weight_matrix.shape, layer.value_gradient_matrix.shape, prev_layer.values.shape)
+                layer.weight_matrix = layer.weight_matrix - layer.value_gradient_matrix * lr
+        
 def testFunction(x):
     """
         Define a function to model in main function
@@ -195,7 +203,7 @@ def main():
             prediction = NN.feedForward()[0]
             true_val = y[i]
             print(prediction, true_val)
-            NN.backProp(true_val, prediction, MSE, MSED)
+            NN.backProp(true_val, prediction, MSE, MSED, lr=0.01)
 
     # x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
     # y_test = testFunction(x_test)
