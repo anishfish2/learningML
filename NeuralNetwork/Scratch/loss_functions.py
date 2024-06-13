@@ -84,9 +84,9 @@ def MSE(actual, predicted):
         :param actual: Actual value(s) of function
         :param predicted: Value(s) output by forward pass of model
     """
-    return  np.mean(-.5 * (actual - predicted) ** 2)
+    return  np.mean(.5 * (actual - predicted) ** 2)
 
-def MSED(predicted, actual):
+def MSED(actual, predicted):
     """
         Derivative of Mean Squared Error
 
@@ -96,4 +96,4 @@ def MSED(predicted, actual):
         :param actual: Actual value(s) of function
     """
 
-    return actual - predicted
+    return len(actual) * (predicted - actual)

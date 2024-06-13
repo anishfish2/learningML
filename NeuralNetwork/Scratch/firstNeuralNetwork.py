@@ -27,7 +27,7 @@ class Layer:
         self.values = None
         
 class NeuralNetwork:
-    def __init__(self, lenInput, learningRate):
+    def __init__(self, lenInput):
         """
         Constructor for Neural Network
 
@@ -42,7 +42,6 @@ class NeuralNetwork:
 
         #Create the Network
         self.Network = [inputLayer]
-        self.learningRate = learningRate
 
     def setInput(self, input):
         """
@@ -124,11 +123,12 @@ class NeuralNetwork:
         :param inputs: Input values to Input Layer
         """
         self.Network[0].values = np.append(np.array([self.input_values]), 1)
+        #print("Training on ", self.input_values)
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
             layer.values = prev_layer.values @ layer.weight_matrix.T 
-            
+            #print(i, prev_layer.values, layer.values)
             if layer.activation:
                 layer.values = layer.activation(layer.values)
             
@@ -137,7 +137,8 @@ class NeuralNetwork:
                 layer.values = np.append(layer.values, 1)
 
         #Return the output layer values
-        return self.Network[-1].values, 1
+        #print("output", self.Network[-1].values)
+        return self.Network[-1].values
 
     def backProp(self, actual, predicted, lossFunction, lossFunctionD, lr):
         """
@@ -150,25 +151,37 @@ class NeuralNetwork:
         """
 
         # Compute the error
+        #print("Feeding into loss", actual, predicted)
         loss = lossFunction(actual, predicted)
+        print("loss", loss)
 
         # Compute the gradient of the error with respect to the output layer
         for index in range(len(self.Network) - 1, 0, -1):
             layer = self.Network[index] 
             prev_layer = self.Network[index - 1]
-
             if index == len(self.Network) - 1:
-                layer.value_gradient_matrix = layer.activationD(layer.values) * lossFunctionD(actual, predicted)
+                if layer.activation:
+                    layer.value_gradient_matrix = layer.activationD(layer.values) * lossFunctionD(actual, predicted)
+                else:
+                    layer.value_gradient_matrix = lossFunctionD(actual, predicted)
+                #print("value gradient", layer.value_gradient_matrix, "prev layer", prev_layer.values)
                 layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(prev_layer.values, (1, -1))
+                #print("weight gradient", layer.weight_gradient_matrix * lr)
                 layer.weight_matrix = layer.weight_matrix - layer.value_gradient_matrix * lr 
             else:
-                print("Calculating value gradient matrix", layer.weight_matrix.shape, self.Network[index + 1].value_gradient_matrix.shape, self.Network[index + 1].weight_matrix[:, :-1].shape, prev_layer.values.shape)
-                layer.value_gradient_matrix = layer.activationD(layer.values[:-1]) * (np.reshape(self.Network[index + 1].value_gradient_matrix, (-1,1)) @ self.Network[index + 1].weight_matrix[:, :-1]).squeeze()
-                print("Layer value gradient matrix", layer.value_gradient_matrix.shape, layer.weight_matrix.shape, prev_layer.values.shape)
-                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(prev_layer.values[:-1], (1, -1))
-                print(layer.weight_matrix.shape, layer.value_gradient_matrix.shape, prev_layer.values.shape)
-                layer.weight_matrix = layer.weight_matrix - layer.value_gradient_matrix * lr
-        
+                if layer.activation:
+                    layer.value_gradient_matrix = layer.activationD(layer.values) * (np.reshape(self.Network[index + 1].value_gradient_matrix, (-1,1)) @ self.Network[index + 1].weight_matrix)
+                else:
+                    layer.value_gradient_matrix = (np.reshape(self.Network[index + 1].value_gradient_matrix, (-1,1)) @ self.Network[index + 1].weight_matrix)
+                
+                #print("value gradient", layer.value_gradient_matrix, "prev layer", prev_layer.values)
+                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix[:,:-1], (-1, 1)) @ np.reshape(prev_layer.values, (1, -1))
+
+                #print("weight gradient", layer.weight_gradient_matrix* lr)
+
+                layer.weight_matrix = layer.weight_matrix - layer.weight_gradient_matrix * lr
+
+        return loss
 def testFunction(x):
     """
         Define a function to model in main function
@@ -177,21 +190,21 @@ def testFunction(x):
 
         :param value: input value to function
     """
-    return np.sin(x)
+    return x * 5 + 2
 
 def main():
 
-    num_vals = 1
-    num_epochs = 3
+    num_vals = 10
+    num_epochs = 100
 
     #Define the input and output values
-    x = [np.array([i]) for i in np.linspace(-5, 5, num=num_vals)]
+    x = np.array([np.array([i]) for i in np.linspace(-5, 5, num=num_vals)])
 
     y = testFunction(x)
-
-    NN = NeuralNetwork(1, 0.1)
-    NN.addHidden(3, ReLU, ReLUD)
-    NN.addOutput(1, ReLU, ReLUD)
+    NN = NeuralNetwork(1)
+    NN.addHidden(3, None, None)
+    NN.addOutput(1, None, None)
+    test = []
 
     for epoch in range(num_epochs):
         
@@ -200,22 +213,26 @@ def main():
             NN.setInput(x[i])
             NN.setInputTest(y[i])
 
-            prediction = NN.feedForward()[0]
+            prediction = NN.feedForward()
+            #print("prediction", prediction)
             true_val = y[i]
-            print(prediction, true_val)
-            NN.backProp(true_val, prediction, MSE, MSED, lr=0.01)
+            loss = NN.backProp(true_val, prediction, MSE, MSED, lr=0.0005)
+            #print(loss)
 
-    # x_test = [[i] for i in np.linspace(-5, 5, num=num_vals)]
-    # y_test = testFunction(x_test)
+        x_test = np.array([[i] for i in np.linspace(-5, 5, num=num_vals)])
+        y_test = testFunction(x_test)
     
-    # test = []
-    # for i in range(num_vals):
-    #     NN.setInput(x_test[i])
-    #     prediction = NN.feedForward()[0]
-    #     test.append(prediction)
+        test_epoch = []
+        for i in range(num_vals):
+            NN.setInput(x_test[i])
+            prediction = NN.feedForward()[0]
+            test_epoch.append(prediction)
+        test.append(test_epoch)
 
-    #plt.plot(x_test, y_test)
-    #plt.plot(x_test, test)
-    #plt.show()
+    for index, epoch in enumerate(test):
+        plt.plot(x_test, y_test)
+        plt.plot(x_test, epoch, label="Epoch: " + str(test.index(epoch) + 1), alpha=index/num_epochs)
+    plt.legend()
+    plt.show()
 if __name__ == "__main__":
     main()
