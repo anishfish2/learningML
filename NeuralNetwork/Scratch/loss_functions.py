@@ -84,7 +84,7 @@ def MSE(actual, predicted):
         :param actual: Actual value(s) of function
         :param predicted: Value(s) output by forward pass of model
     """
-    return  np.mean(.5 * (actual - predicted) ** 2)
+    return  .5 * (actual - predicted) ** 2
 
 def MSED(actual, predicted):
     """
@@ -96,4 +96,24 @@ def MSED(actual, predicted):
         :param actual: Actual value(s) of function
     """
 
-    return len(actual) * (predicted - actual)
+    return predicted - actual
+
+def identity(x):
+    """
+        Identity activation function
+
+        This function returns the input value
+
+        :param x: Input value(s)
+    """
+    return x
+
+def identityD(x):
+    """
+        Derivative of the identity activation function
+
+        This function returns 1
+
+        :param x: Input value(s)
+    """
+    return 1
