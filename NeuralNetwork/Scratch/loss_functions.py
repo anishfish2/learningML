@@ -12,6 +12,7 @@ def he_initializer(lenInput):
     stddev = np.sqrt(2 / lenInput) 
     return np.random.normal(0, stddev, size = lenInput)
 
+
 def ReLU(x):
     """
         Standard implementation of ReLU

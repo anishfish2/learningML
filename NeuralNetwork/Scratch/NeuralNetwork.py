@@ -85,7 +85,6 @@ class NeuralNetwork:
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
             layer.values = prev_layer.values @ layer.weight_matrix.T 
-
             if layer.activation:
                 layer.values = layer.activation(layer.values)
             
@@ -113,27 +112,25 @@ class NeuralNetwork:
         for index in range(len(self.Network) - 1, 0, -1):
             layer = self.Network[index] 
             next_layer = self.Network[index - 1]
+
             if index == len(self.Network) - 1:
                 if layer.activation:
-                    layer.value_gradient_matrix = layer.activationD(layer.values) * lossFunctionD(actual, predicted)
+                    layer.value_gradient_matrix = lossFunctionD(actual, predicted) * layer.activationD(layer.values)
                 else:
                     layer.value_gradient_matrix = lossFunctionD(actual, predicted)
-                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(next_layer.values, (1, -1))
-                layer.weight_matrix = layer.weight_matrix - layer.value_gradient_matrix * lr 
             else:
-                # if index == len(self.Network) - 2:
-                #     if layer.activation:
-                #         layer.value_gradient_matrix = layer.activationD(layer.values) * (np.reshape(self.Network[index + 1].value_gradient_matrix, (1,-1)) @ self.Network[index + 1].weight_matrix)
-                #     else:
-                #         layer.value_gradient_matrix = np.reshape(self.Network[index + 1].value_gradient_matrix, (-1,1)) @ self.Network[index + 1].weight_matrix
-                # else:
                 if layer.activation:
-                    layer.value_gradient_matrix = layer.activationD(layer.values) * (np.reshape(self.Network[index + 1].value_gradient_matrix, (1,-1)) @ self.Network[index].weight_matrix.T)
+                    layer.value_gradient_matrix = layer.activationD(layer.values) * (self.Network[index+1].weight_matrix.T @ self.Network[index + 1].value_gradient_matrix)
                 else:
-                    layer.value_gradient_matrix = np.reshape(self.Network[index + 1].value_gradient_matrix[:, :-1], (1,-1)) @ self.Network[index + 1].weight_matrix
-                layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix[:, :-1], (-1, 1)) @ np.reshape(next_layer.values, (1, -1))
+                    layer.value_gradient_matrix = self.Network[index+1].weight_matrix @ self.Network[index + 1].value_gradient_matrix
+            layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(next_layer.values, (-1, 1)).T
 
-                layer.weight_matrix = layer.weight_matrix - layer.weight_gradient_matrix * lr
+            # Gradient Clipping to avoid exploding gradients
+            max_grad = 1.0  
+            layer.weight_gradient_matrix = np.clip(layer.weight_gradient_matrix, -max_grad, max_grad)
+            layer.weight_matrix[:, :-1] -= lr * layer.weight_gradient_matrix[:, :-1]  # Update weights
+            layer.weight_matrix[:, -1] -= lr * layer.value_gradient_matrix  # Update biases
+
 
         return loss
 
@@ -148,66 +145,63 @@ def testFunction(x):
     return np.sin(x)
 
 def main():
+    num_vals = 1000
+    num_epochs = 1000
 
-    num_vals = 10000
-    num_epochs = 1
-
-    #Define the input and output values
     x = np.array([np.array([i]) for i in np.linspace(-5, 5, num=num_vals)])
     y = testFunction(x)
 
     NN = NeuralNetwork(1)
-    NN.addLayer(8, tanh, tanhD)
+    NN.addLayer(64, ReLU, ReLUD)
     NN.addLayer(1, identity, identityD, True)
 
     test = []
     train = []
     epoch_loss = []
     
+    plt.figure(figsize=(10, 6))
+    
     for epoch in tqdm(range(num_epochs)):
         total_loss = 0
        
         for i in range(num_vals):
-
             prediction = NN.feedForward(x[i])
             true_val = y[i]
             loss = NN.backProp(true_val, prediction, MSE, MSED, lr=0.001)
-
-            # if i % 1000 == 0:
-            #     print("Epoch: ", epoch + 1, "loss", loss, "Prediction: ", prediction, "True Value: ", true_val)
             total_loss += loss
 
         x_test = np.array([[i] for i in np.linspace(-5, 5, num=num_vals)])
         y_test = testFunction(x_test)
-    
+
         y_preds = []
         for i in range(num_vals):
             y_preds.append(NN.feedForward(x_test[i])[0])
 
+        plt.clf() 
+        plt.plot(x_test, y_test, label="True Function (sin(x))", color='blue')
+        plt.plot(x_test, y_preds, label=f"Epoch {epoch + 1} Predictions", color='red', alpha=0.7)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.title(f'Epoch {epoch + 1} - Neural Network Approximation')
+        plt.legend()
+        plt.pause(0.01) 
         epoch_loss.append(total_loss)
 
-    
-        
-    # for index, epoch in enumerate(train):
-    #     plt.plot(x, y)
-    #     plt.plot(x, epoch, label="Epoch: " + str(train.index(epoch) + 1), alpha=index/num_epochs)
-    # plt.legend()
-    # plt.show()
-    
-    # for index, epoch in enumerate(test):
-    plt.plot(x_test, y_test)
-    plt.plot(x_test, y_preds)
-    # plt.plot(x_test, epoch, label="Epoch: " + str(test.index(epoch) + 1), alpha=index/num_epochs)
-    plt.legend()
-    plt.show()
-
-
+    plt.figure(figsize=(10, 6))
     plt.plot(epoch_loss)
     plt.ylabel("Loss")
     plt.xlabel("Epoch")
-    plt.title("Loss per epoch")
+    plt.title("Loss per Epoch")
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_test, y_test, label="True Function (sin(x))", color='blue')
+    plt.plot(x_test, y_preds, label="Final Predictions", color='red', alpha=0.7)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Final Neural Network Approximation')
     plt.legend()
     plt.show()
-    
+
 if __name__ == "__main__":
     main()
