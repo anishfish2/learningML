@@ -55,12 +55,10 @@ class NeuralNetwork:
         """
 
         #Initialize weights and biases using He initialization method; Biases set with zero values
-        #Create hidden layer with random biases, random weights, given size and activation function, and assign index
         if not isOutput:
             matrix = np.zeros((numNodes + 1, self.Network[-1].numNodes))
             for node in range(numNodes):
                 matrix[node, :-1] = he_initializer(self.Network[-1].numNodes - 1)
-
             layer = Layer(matrix, activation, activationD, numNodes + 1, len(self.Network))
         else:
             matrix = np.zeros((numNodes, self.Network[-1].numNodes))
@@ -68,7 +66,6 @@ class NeuralNetwork:
                 matrix[node, :] = he_initializer(self.Network[-1].numNodes)
             layer = Layer(matrix, activation, activationD, numNodes, len(self.Network))
 
-            
         #Add to network
         self.Network.append(layer)
         
@@ -87,10 +84,6 @@ class NeuralNetwork:
             layer.values = prev_layer.values @ layer.weight_matrix.T 
             if layer.activation:
                 layer.values = layer.activation(layer.values)
-            
-            # Add bias unit
-            # if i != len(self.Network) - 1:
-            #     layer.values = np.append(layer.values, 1)
 
         #Return the output layer values
         return self.Network[-1].values
@@ -129,7 +122,7 @@ class NeuralNetwork:
             max_grad = 1.0  
             layer.weight_gradient_matrix = np.clip(layer.weight_gradient_matrix, -max_grad, max_grad)
             layer.weight_matrix[:, :-1] -= lr * layer.weight_gradient_matrix[:, :-1]  # Update weights
-            layer.weight_matrix[:, -1] -= lr * layer.value_gradient_matrix  # Update biases
+            layer.weight_matrix[:, -1] -= lr * np.sum(layer.value_gradient_matrix, axis=0, keepdims=True)
 
 
         return loss
@@ -147,12 +140,14 @@ def testFunction(x):
 def main():
     num_vals = 1000
     num_epochs = 1000
+    batch_size = 32
 
     x = np.array([np.array([i]) for i in np.linspace(-5, 5, num=num_vals)])
     y = testFunction(x)
 
+    
     NN = NeuralNetwork(1)
-    NN.addLayer(64, ReLU, ReLUD)
+    NN.addLayer(128, ReLU, ReLUD)
     NN.addLayer(1, identity, identityD, True)
 
     test = []
