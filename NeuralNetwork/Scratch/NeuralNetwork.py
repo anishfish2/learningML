@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from loss_functions import *
 from tqdm import tqdm
 
-class Layer:
+class LinearLayer:
      def __init__(self, matrix, activation, activationD, numNodes, index):
         """
         Constructor for Neural Network Layer
@@ -37,7 +37,7 @@ class NeuralNetwork:
         :param lenInput: Number of Input Layer Neurons
         """
 
-        inputLayer = Layer(None, None, None, lenInput + 1, 0)
+        inputLayer = LinearLayer(None, None, None, lenInput, 0)
 
         self.Network = [inputLayer]
 
@@ -55,16 +55,11 @@ class NeuralNetwork:
         """
 
         #Initialize weights and biases using He initialization method; Biases set with zero values
-        if not isOutput:
-            matrix = np.zeros((numNodes + 1, self.Network[-1].numNodes))
-            for node in range(numNodes):
-                matrix[node, :-1] = he_initializer(self.Network[-1].numNodes - 1)
-            layer = Layer(matrix, activation, activationD, numNodes + 1, len(self.Network))
-        else:
-            matrix = np.zeros((numNodes, self.Network[-1].numNodes))
-            for node in range(numNodes):
-                matrix[node, :] = he_initializer(self.Network[-1].numNodes)
-            layer = Layer(matrix, activation, activationD, numNodes, len(self.Network))
+
+        matrix = np.zeros((numNodes, self.Network[-1].numNodes + 1))
+        for node in range(numNodes):
+            matrix[node, :-1] = he_initializer(self.Network[-1].numNodes)
+        layer = LinearLayer(matrix, activation, activationD, numNodes, len(self.Network))
 
         #Add to network
         self.Network.append(layer)
@@ -77,11 +72,11 @@ class NeuralNetwork:
 
         :param inputs: Input values to Input Layer
         """
-        self.Network[0].values = np.append(np.array([input]), 1)
+        self.Network[0].values = np.ravel(input)
         for i in range(1, len(self.Network)):
             layer = self.Network[i]
             prev_layer = self.Network[i-1]
-            layer.values = prev_layer.values @ layer.weight_matrix.T 
+            layer.values = np.append(prev_layer.values, 1) @ layer.weight_matrix.T  # Add bias
             if layer.activation:
                 layer.values = layer.activation(layer.values)
 
@@ -113,16 +108,15 @@ class NeuralNetwork:
                     layer.value_gradient_matrix = lossFunctionD(actual, predicted)
             else:
                 if layer.activation:
-                    layer.value_gradient_matrix = layer.activationD(layer.values) * (self.Network[index+1].weight_matrix.T @ self.Network[index + 1].value_gradient_matrix)
+                    layer.value_gradient_matrix = layer.activationD(layer.values) * (self.Network[index+1].weight_matrix[:, :-1].T @ self.Network[index + 1].value_gradient_matrix)
                 else:
                     layer.value_gradient_matrix = self.Network[index+1].weight_matrix @ self.Network[index + 1].value_gradient_matrix
-            layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(next_layer.values, (-1, 1)).T
+            layer.weight_gradient_matrix = np.reshape(layer.value_gradient_matrix, (-1, 1)) @ np.reshape(np.append(next_layer.values, 1), (1, -1))
 
             # Gradient Clipping to avoid exploding gradients
-            max_grad = 1.0  
+            max_grad = 5.0  
             layer.weight_gradient_matrix = np.clip(layer.weight_gradient_matrix, -max_grad, max_grad)
-            layer.weight_matrix[:, :-1] -= lr * layer.weight_gradient_matrix[:, :-1]  # Update weights
-            layer.weight_matrix[:, -1] -= lr * np.sum(layer.value_gradient_matrix, axis=0, keepdims=True)
+            layer.weight_matrix -= lr * layer.weight_gradient_matrix  # Update weights
 
 
         return loss
@@ -135,67 +129,67 @@ def testFunction(x):
 
         :param value: input value to function
     """
-    return np.sin(x)
+    return x ** 2
 
 def main():
     num_vals = 1000
-    num_epochs = 1000
-    batch_size = 32
+    num_epochs = 2000
 
-    x = np.array([np.array([i]) for i in np.linspace(-5, 5, num=num_vals)])
+    x = np.array([[i] for i in np.linspace(-1, 1, num_vals)])
     y = testFunction(x)
 
-    
     NN = NeuralNetwork(1)
-    NN.addLayer(128, ReLU, ReLUD)
+    NN.addLayer(16, leakyReLU, leakyReLUD)
     NN.addLayer(1, identity, identityD, True)
 
-    test = []
-    train = []
     epoch_loss = []
-    
-    plt.figure(figsize=(10, 6))
-    
+
+    # Create a single figure with 2 subplots:
+    plt.ion()  # Turn on interactive mode so plt.pause() works
+    fig, (ax_pred, ax_loss) = plt.subplots(2, 1, figsize=(8, 10))
+
     for epoch in tqdm(range(num_epochs)):
         total_loss = 0
-       
         for i in range(num_vals):
             prediction = NN.feedForward(x[i])
             true_val = y[i]
             loss = NN.backProp(true_val, prediction, MSE, MSED, lr=0.001)
             total_loss += loss
 
-        x_test = np.array([[i] for i in np.linspace(-5, 5, num=num_vals)])
-        y_test = testFunction(x_test)
+        epoch_loss.append(total_loss)
 
+        x_test = np.array([[i] for i in np.linspace(-5, 5, num_vals)])
+        y_test = testFunction(x_test)
         y_preds = []
         for i in range(num_vals):
             y_preds.append(NN.feedForward(x_test[i])[0])
 
-        plt.clf() 
-        plt.plot(x_test, y_test, label="True Function (sin(x))", color='blue')
-        plt.plot(x_test, y_preds, label=f"Epoch {epoch + 1} Predictions", color='red', alpha=0.7)
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.title(f'Epoch {epoch + 1} - Neural Network Approximation')
-        plt.legend()
+        ax_pred.cla()  # Clear old lines
+        ax_pred.plot(x_test, y_test, label="True sin(x)")
+        ax_pred.plot(x_test, y_preds, label=f"Epoch {epoch+1} Prediction")
+        ax_pred.set_xlabel('x')
+        ax_pred.set_ylabel('y')
+        ax_pred.set_title('Network Approximation Over Epochs')
+        ax_pred.legend()
+
+        ax_loss.cla()
+        ax_loss.plot(epoch_loss, label="Training Loss")
+        ax_loss.set_xlabel('Epoch')
+        ax_loss.set_ylabel('Loss')
+        ax_loss.set_title('Loss Over Time')
+        ax_loss.legend()
+
         plt.pause(0.01) 
-        epoch_loss.append(total_loss)
+
+    # Leave the final figures open
+    plt.ioff()
+    plt.show()
 
     plt.figure(figsize=(10, 6))
     plt.plot(epoch_loss)
     plt.ylabel("Loss")
     plt.xlabel("Epoch")
     plt.title("Loss per Epoch")
-    plt.show()
-
-    plt.figure(figsize=(10, 6))
-    plt.plot(x_test, y_test, label="True Function (sin(x))", color='blue')
-    plt.plot(x_test, y_preds, label="Final Predictions", color='red', alpha=0.7)
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Final Neural Network Approximation')
-    plt.legend()
     plt.show()
 
 if __name__ == "__main__":

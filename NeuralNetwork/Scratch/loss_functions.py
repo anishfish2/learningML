@@ -9,8 +9,7 @@ def he_initializer(lenInput):
         :param lenInput: Number of Input Layer Neurons
         """
     
-    stddev = np.sqrt(2 / lenInput) 
-    return np.random.normal(0, stddev, size = lenInput)
+    return np.random.randn(lenInput) * np.sqrt(2 / lenInput)
 
 
 def ReLU(x):
@@ -33,6 +32,27 @@ def ReLUD(x):
         :param x: Value to apply ReLU Derivative
     """
     return np.where(x > 0, 1, 0)
+
+def leakyReLU(x):
+    """
+        Leaky ReLU activation function
+
+        This function returns the max of x and 0.01x
+        
+        :param x: Input value(s)
+    """
+    return np.maximum(0.01 * x, x)
+
+def leakyReLUD(x):
+    """
+        Derivative of the leaky ReLU activation function
+
+        This function returns the derivative of leaky ReLU
+
+        :param x: Input value(s)
+    """
+    return np.where(x > 0, 1, 0.01)
+
 
 def sigmoid(x):
     """
@@ -117,4 +137,4 @@ def identityD(x):
 
         :param x: Input value(s)
     """
-    return 1
+    return np.ones_like(x)
